@@ -6,16 +6,22 @@ export function useAuth() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
-      }
-    })
+  const fetchProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      if (!error) setProfile(data)
+    } catch (err) {
+      console.error('Error fetching profile:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -25,25 +31,8 @@ export function useAuth() {
         setLoading(false)
       }
     })
-
     return () => subscription.unsubscribe()
   }, [])
-
-  const fetchProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (!error) setProfile(data)
-    } catch (err) {
-      console.error('Error fetching profile:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const refreshProfile = async () => {
     if (user) await fetchProfile(user.id)
@@ -62,9 +51,7 @@ export function useAuth() {
   const signInWithGoogle = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/generator`,
-      },
+      options: { redirectTo: `${window.location.origin}/generator` },
     })
     return { data, error }
   }
