@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { jsPDF } from 'jspdf'
 
 const SUGGESTIONS = [
   'Un lion majestueux dans la savane',
@@ -8,7 +9,7 @@ const SUGGESTIONS = [
   'Un dragon crachant des flammes',
   'Un château médiéval au coucher de soleil',
   'Un cosmos avec des étoiles et planètes',
-  'Une pieuvre géante dans l\'océan',
+  "Une pieuvre géante dans l'océan",
   'Un renard dans la neige',
   'Une licorne volante avec des nuages',
 ]
@@ -28,7 +29,7 @@ export default function Generator() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const [downloading, setDownloading] = useState(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -86,12 +87,24 @@ export default function Generator() {
       const filename = `coloriage-${Date.now()}`
 
       if (format === 'pdf') {
-        // Fallback: download as JPG (proper PDF needs a library)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
-        const a = document.createElement('a')
-        a.href = dataUrl
-        a.download = `${filename}.jpg`
-        a.click()
+        const pdf = new jsPDF({
+          orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: 'a4',
+        })
+        const pageW = pdf.internal.pageSize.getWidth()
+        const pageH = pdf.internal.pageSize.getHeight()
+        const margin = 10
+        const maxW = pageW - margin * 2
+        const maxH = pageH - margin * 2
+        const ratio = Math.min(maxW / canvas.width, maxH / canvas.height)
+        const imgW = canvas.width * ratio
+        const imgH = canvas.height * ratio
+        const x = (pageW - imgW) / 2
+        const y = (pageH - imgH) / 2
+        pdf.addImage(dataUrl, 'JPEG', x, y, imgW, imgH)
+        pdf.save(`${filename}.pdf`)
       } else {
         const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
         const quality = format === 'jpg' ? 0.92 : undefined
@@ -249,7 +262,7 @@ export default function Generator() {
           /* Result */
           <div className="flex flex-col items-center gap-6">
             <div className="w-full surface-card overflow-hidden" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.4)' }}>
-              {/* Image preview */}
+              {/* SVG preview */}
               <div
                 className="flex items-center justify-center p-8"
                 style={{ background: 'rgba(255,255,255,0.97)', minHeight: '380px' }}
