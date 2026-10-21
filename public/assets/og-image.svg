@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#EEF2FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E0F2FE;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Left colored bar -->
+  <rect width="12" height="630" fill="url(#accent)"/>
+  <!-- Decorative circles -->
+  <circle cx="1050" cy="100" r="180" fill="#3B82F6" opacity="0.06"/>
+  <circle cx="980" cy="520" r="120" fill="#06B6D4" opacity="0.08"/>
+  <circle cx="150" cy="550" r="90" fill="#8B5CF6" opacity="0.06"/>
+  <!-- Logo area -->
+  <rect x="60" y="60" width="180" height="60" rx="16" fill="url(#accent)"/>
+  <text x="150" y="100" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800" fill="white" text-anchor="middle">ColorPlay</text>
+  <!-- Main headline -->
+  <text x="60" y="240" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800" fill="#1A1A2E">Coloriages IA</text>
+  <text x="60" y="330" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800" fill="url(#accent)">personnalisés</text>
+  <!-- Subtitle -->
+  <text x="60" y="405" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="400" fill="#64748B">Génère des coloriages uniques en quelques secondes</text>
+  <text x="60" y="450" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="400" fill="#64748B">pour enfants, familles et enseignants</text>
+  <!-- CTA badge -->
+  <rect x="60" y="510" width="320" height="64" rx="16" fill="url(#accent)"/>
+  <text x="220" y="552" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700" fill="white" text-anchor="middle">✨ Essai gratuit</text>
+  <!-- Coloring preview shapes (right side) -->
+  <g transform="translate(720, 80)" opacity="0.9">
+    <rect width="400" height="480" rx="24" fill="white" stroke="#E2E8F0" stroke-width="2"/>
+    <!-- Tree -->
+    <ellipse cx="200" cy="180" rx="90" ry="110" fill="none" stroke="#1A1A2E" stroke-width="4"/>
+    <ellipse cx="200" cy="150" rx="70" ry="88" fill="none" stroke="#1A1A2E" stroke-width="3"/>
+    <rect x="185" y="280" width="30" height="80" rx="6" fill="none" stroke="#1A1A2E" stroke-width="4"/>
+    <!-- Sun -->
+    <circle cx="330" cy="80" r="35" fill="none" stroke="#1A1A2E" stroke-width="3"/>
+    <line x1="330" y1="30" x2="330" y2="15" stroke="#1A1A2E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="330" y1="130" x2="330" y2="145" stroke="#1A1A2E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="280" y1="80" x2="265" y2="80" stroke="#1A1A2E" stroke-width="3" stroke-linecap="round"/>
+    <line x1="380" y1="80" x2="395" y2="80" stroke="#1A1A2E" stroke-width="3" stroke-linecap="round"/>
+    <!-- Ground -->
+    <line x1="20" y1="370" x2="380" y2="370" stroke="#1A1A2E" stroke-width="3"/>
+    <!-- Color dots -->
+    <circle cx="120" cy="440" r="18" fill="#3B82F6" opacity="0.9"/>
+    <circle cx="170" cy="440" r="18" fill="#F97316" opacity="0.9"/>
+    <circle cx="220" cy="440" r="18" fill="#10B981" opacity="0.9"/>
+    <circle cx="270" cy="440" r="18" fill="#8B5CF6" opacity="0.9"/>
+    <circle cx="320" cy="440" r="18" fill="#06B6D4" opacity="0.9"/>
+  </g>
+  <!-- colorplay.app label -->
+  <text x="60" y="600" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="500" fill="#94A3B8">colorplay.app</text>
+</svg>
