@@ -15,9 +15,15 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError(error.message); setLoading(false) }
-    else navigate('/generator')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    } else {
+      // Attendre que la session soit bien stockée avant de naviguer
+      // onAuthStateChange dans useAuth sera déclenché automatiquement
+      navigate('/generator', { replace: true })
+    }
   }
 
   const handleReset = async () => {

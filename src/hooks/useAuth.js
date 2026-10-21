@@ -1,28 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useAuth() {
-  // Initialise immédiatement depuis la session en cache — évite le flash de spinner
-  const [user, setUser] = useState(() => {
-    try {
-      // Supabase stocke la session dans localStorage — on peut la lire de façon synchrone
-      const stored = localStorage.getItem('sb-rtrkshbrvyrlrdpkwosv-auth-token')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        return parsed?.user ?? null
-      }
-    } catch {}
-    return null
-  })
+  const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  // Si on a déjà un user en cache, pas besoin de spinner d'attente
-  const [loading, setLoading] = useState(() => {
-    try {
-      const stored = localStorage.getItem('sb-rtrkshbrvyrlrdpkwosv-auth-token')
-      return !stored
-    } catch {}
-    return true
-  })
+  const [loading, setLoading] = useState(true)
 
   const fetchProfile = async (userId) => {
     try {
@@ -34,35 +16,33 @@ export function useAuth() {
       if (!error) setProfile(data)
     } catch (err) {
       console.error('Error fetching profile:', err)
-    } finally {
-      setLoading(false)
     }
   }
 
   useEffect(() => {
-    // Vérifie la session réelle en arrière-plan (refresh token si besoin)
+    // 1) Récupère la session actuelle immédiatement (lit le localStorage Supabase)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchProfile(session.user.id)
+        fetchProfile(session.user.id).finally(() => setLoading(false))
       } else {
         setLoading(false)
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
+    // 2) Écoute les changements (login, logout, refresh token)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
+        await fetchProfile(u.id)
       } else {
         setProfile(null)
-        setLoading(false)
       }
+      setLoading(false)
     })
 
-    return () => {
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const refreshProfile = async () => {
