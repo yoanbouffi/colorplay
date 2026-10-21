@@ -12,33 +12,30 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null))
+    // Lecture initiale rapide depuis la session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) fetchCredits(u.id)
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null)
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) fetchCredits(u.id)
+      else setCredits(null)
     })
     return () => subscription.unsubscribe()
   }, [])
 
-  useEffect(() => {
-    if (!user) return
-    const fetchCredits = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('credits')
-        .eq('id', user.id)
-        .single()
-      if (data) setCredits(data.credits)
-    }
-    fetchCredits()
-
-    const channel = supabase
-      .channel('credits-' + user.id)
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}`
-      }, payload => setCredits(payload.new.credits))
-      .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [user])
+  const fetchCredits = async (userId) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('credits_remaining')
+      .eq('id', userId)
+      .single()
+    if (data) setCredits(data.credits_remaining)
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)

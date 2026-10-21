@@ -2,10 +2,27 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 export function useAuth() {
-  const [user, setUser] = useState(null)
+  // Initialise immédiatement depuis la session en cache — évite le flash de spinner
+  const [user, setUser] = useState(() => {
+    try {
+      // Supabase stocke la session dans localStorage — on peut la lire de façon synchrone
+      const stored = localStorage.getItem('sb-rtrkshbrvyrlrdpkwosv-auth-token')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        return parsed?.user ?? null
+      }
+    } catch {}
+    return null
+  })
   const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const realtimeChannel = useRef(null)
+  // Si on a déjà un user en cache, pas besoin de spinner d'attente
+  const [loading, setLoading] = useState(() => {
+    try {
+      const stored = localStorage.getItem('sb-rtrkshbrvyrlrdpkwosv-auth-token')
+      return !stored
+    } catch {}
+    return true
+  })
 
   const fetchProfile = async (userId) => {
     try {
@@ -22,51 +39,29 @@ export function useAuth() {
     }
   }
 
-  const subscribeToProfile = (userId) => {
-    // Unsubscribe from any previous channel
-    if (realtimeChannel.current) {
-      supabase.removeChannel(realtimeChannel.current)
-    }
-
-    realtimeChannel.current = supabase
-      .channel(`profile-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${userId}`,
-        },
-        (payload) => {
-          // Live update credits & plan in navbar without re-fetch
-          setProfile(prev => prev ? { ...prev, ...payload.new } : payload.new)
-        }
-      )
-      .subscribe()
-  }
-
   useEffect(() => {
+    // Vérifie la session réelle en arrière-plan (refresh token si besoin)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setLoading(false)
+      }
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
         await fetchProfile(session.user.id)
-        subscribeToProfile(session.user.id)
       } else {
         setProfile(null)
         setLoading(false)
-        if (realtimeChannel.current) {
-          supabase.removeChannel(realtimeChannel.current)
-          realtimeChannel.current = null
-        }
       }
     })
 
     return () => {
       subscription.unsubscribe()
-      if (realtimeChannel.current) {
-        supabase.removeChannel(realtimeChannel.current)
-      }
     }
   }, [])
 
