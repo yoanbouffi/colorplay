@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import jsPDF from 'jspdf'
+import { downloadImageAsPng } from '../lib/fal'
 
 export default function ColoringCard({ coloring, onDelete }) {
   const { t } = useTranslation()
   const [deleting, setDeleting] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingPng, setDownloadingPng] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   const levelColors = {
@@ -21,7 +23,7 @@ export default function ColoringCard({ coloring, onDelete }) {
   }
 
   const handleDownloadPDF = async () => {
-    setDownloading(true)
+    setDownloadingPdf(true)
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const img = new Image()
@@ -31,14 +33,24 @@ export default function ColoringCard({ coloring, onDelete }) {
         img.onerror = reject
         img.src = coloring.image_url
       })
-      doc.addImage(img, 'PNG', 10, 10, 190, 277)
+      const ratio = img.height / img.width
+      const w = 190
+      const h = Math.min(w * ratio, 277)
+      doc.addImage(img, 'PNG', 10, 10, w, h)
       const safeName = coloring.prompt.replace(/[^a-z0-9]/gi, '-').substring(0, 30)
       doc.save(`colorplay-${safeName}.pdf`)
     } catch (err) {
       console.error('PDF error:', err)
     } finally {
-      setDownloading(false)
+      setDownloadingPdf(false)
     }
+  }
+
+  const handleDownloadPng = async () => {
+    setDownloadingPng(true)
+    const safeName = coloring.prompt.replace(/[^a-z0-9]/gi, '-').substring(0, 20)
+    await downloadImageAsPng(coloring.image_url, `colorplay-${safeName}`)
+    setDownloadingPng(false)
   }
 
   const handlePrint = () => {
@@ -93,8 +105,6 @@ export default function ColoringCard({ coloring, onDelete }) {
             onError={() => setImgError(true)}
           />
         )}
-
-        {/* Overlay on hover */}
         <div className="absolute inset-0 bg-neutral-dark/0 group-hover:bg-neutral-dark/10 transition-all duration-300" />
       </div>
 
@@ -116,25 +126,40 @@ export default function ColoringCard({ coloring, onDelete }) {
 
         <p className="text-xs text-neutral-dark/40 mb-3">{formattedDate}</p>
 
-        {/* Actions */}
+        {/* Actions: PDF | PNG | Print | Delete */}
         <div className="flex items-center gap-1.5">
           <button
             onClick={handleDownloadPDF}
-            disabled={downloading}
+            disabled={downloadingPdf}
             className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium bg-brand-blue/10 text-brand-blue rounded-lg hover:bg-brand-blue hover:text-white transition-all duration-200 disabled:opacity-40"
-            title={t('history.actions.download')}
+            title="PDF"
           >
-            {downloading ? (
-              <span className="animate-spin h-3 w-3 border border-brand-blue border-t-transparent rounded-full" />
+            {downloadingPdf ? (
+              <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
             ) : (
-              <>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                {t('history.actions.download')}
-              </>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             )}
+            PDF
           </button>
+
+          <button
+            onClick={handleDownloadPng}
+            disabled={downloadingPng}
+            className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium bg-brand-purple/10 text-brand-purple rounded-lg hover:bg-brand-purple hover:text-white transition-all duration-200 disabled:opacity-40"
+            title="PNG"
+          >
+            {downloadingPng ? (
+              <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            )}
+            PNG
+          </button>
+
           <button
             onClick={handlePrint}
             className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium bg-brand-teal/10 text-brand-teal rounded-lg hover:bg-brand-teal hover:text-white transition-all duration-200"
@@ -145,6 +170,7 @@ export default function ColoringCard({ coloring, onDelete }) {
             </svg>
             {t('history.actions.print')}
           </button>
+
           <button
             onClick={handleDelete}
             disabled={deleting}
@@ -152,7 +178,7 @@ export default function ColoringCard({ coloring, onDelete }) {
             title={t('history.actions.delete')}
           >
             {deleting ? (
-              <span className="animate-spin h-3 w-3 border border-red-400 border-t-transparent rounded-full block" />
+              <span className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full block" />
             ) : (
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

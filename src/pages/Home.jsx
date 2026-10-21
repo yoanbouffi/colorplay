@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import PlanCard from '../components/PlanCard'
 
 const TYPED_TEXTS_FR = [
@@ -112,10 +113,51 @@ function TypingAnimation() {
   )
 }
 
+function AnimatedCounter({ target, duration = 1800 }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!target) return
+    const start = 0
+    const step = target / (duration / 16)
+    let current = start
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target)
+      setCount(Math.floor(current))
+      if (current >= target) clearInterval(timer)
+    }, 16)
+    return () => clearInterval(timer)
+  }, [target, duration])
+
+  return <span>{count.toLocaleString()}</span>
+}
+
 export default function Home() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
   const lang = i18n.language === 'en' ? 'en' : 'fr'
+
+  const [totalColorings, setTotalColorings] = useState(null)
+  const [totalUsers, setTotalUsers] = useState(null)
+
+  useEffect(() => {
+    // Fetch live stats
+    const fetchStats = async () => {
+      try {
+        const { count: coloringsCount } = await supabase
+          .from('colorings')
+          .select('*', { count: 'exact', head: true })
+        const { count: usersCount } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+        if (coloringsCount != null) setTotalColorings(coloringsCount)
+        if (usersCount != null) setTotalUsers(usersCount)
+      } catch (err) {
+        // silently fail — stats are nice-to-have
+      }
+    }
+    fetchStats()
+  }, [])
 
   return (
     <div className="bg-neutral-light">
@@ -158,21 +200,44 @@ export default function Home() {
                 </Link>
               </div>
               <p className="text-sm text-neutral-dark/40 mt-3">{t('home.hero.ctaSubtext')}</p>
+
+              {/* Live stats */}
+              {(totalColorings !== null || totalUsers !== null) && (
+                <div className="flex items-center gap-6 mt-6 pt-6 border-t border-gray-100">
+                  {totalColorings !== null && (
+                    <div className="text-center md:text-left">
+                      <div className="text-2xl font-extrabold text-brand-blue">
+                        <AnimatedCounter target={totalColorings} />+
+                      </div>
+                      <div className="text-xs text-neutral-dark/50 mt-0.5">
+                        {lang === 'fr' ? 'coloriages créés' : 'coloring pages created'}
+                      </div>
+                    </div>
+                  )}
+                  {totalUsers !== null && (
+                    <div className="text-center md:text-left">
+                      <div className="text-2xl font-extrabold text-brand-teal">
+                        <AnimatedCounter target={totalUsers} />+
+                      </div>
+                      <div className="text-xs text-neutral-dark/50 mt-0.5">
+                        {lang === 'fr' ? 'créateurs actifs' : 'active creators'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Right — preview card */}
             <div className="flex-1 flex justify-center">
               <div className="relative w-64 h-80 md:w-72 md:h-96 bg-neutral-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex items-center justify-center">
-                {/* Decorative background dots */}
                 <div className="absolute inset-0 opacity-5">
                   {[...Array(16)].map((_, i) => (
                     <div key={i} className="absolute w-2 h-2 rounded-full bg-neutral-dark"
                       style={{ top: `${(i % 4) * 25 + 10}%`, left: `${Math.floor(i / 4) * 25 + 10}%` }} />
                   ))}
                 </div>
-                {/* Coloring preview SVG */}
                 <svg viewBox="0 0 180 240" className="w-56 h-72 md:w-64 md:h-80">
-                  {/* Sun */}
                   <circle cx="140" cy="30" r="18" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
                   {[0,45,90,135,180,225,270,315].map((angle, i) => (
                     <line key={i}
@@ -183,24 +248,18 @@ export default function Home() {
                       stroke="#1A1A2E" strokeWidth="2.5" strokeLinecap="round"
                     />
                   ))}
-                  {/* Cloud */}
                   <ellipse cx="50" cy="40" rx="20" ry="14" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
                   <ellipse cx="70" cy="44" rx="16" ry="12" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
                   <ellipse cx="32" cy="44" rx="12" ry="10" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
-                  {/* Tree trunk */}
                   <rect x="78" y="160" width="24" height="60" rx="4" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
-                  {/* Tree foliage */}
                   <ellipse cx="90" cy="100" rx="50" ry="60" fill="none" stroke="#1A1A2E" strokeWidth="2.5"/>
                   <ellipse cx="90" cy="85" rx="38" ry="48" fill="none" stroke="#1A1A2E" strokeWidth="1.5"/>
                   <ellipse cx="90" cy="70" rx="26" ry="36" fill="none" stroke="#1A1A2E" strokeWidth="1.5"/>
-                  {/* Grass */}
                   {[20,40,60,80,100,120,140,160].map((x, i) => (
                     <path key={i} d={`M${x} 220 Q${x+5} 210 ${x+10} 220`} fill="none" stroke="#1A1A2E" strokeWidth="2"/>
                   ))}
-                  {/* Ground line */}
                   <line x1="10" y1="222" x2="170" y2="222" stroke="#1A1A2E" strokeWidth="2"/>
                 </svg>
-                {/* Color palette decoration */}
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
                   {['#8ebced','#fcac4c','#89e5b3','#be9fe2','#55c9a2'].map(c => (
                     <div key={c} className="w-5 h-5 rounded-full shadow-sm border-2 border-white" style={{ backgroundColor: c }} />
