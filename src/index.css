@@ -1,41 +1,160 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-neutral-light text-neutral-dark font-sans;
+    @apply bg-surface-bg text-ink-primary font-sans;
+    background-color: #080818;
+    color: #F0F0FF;
   }
+
+  /* Scrollbar dark */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #080818; }
+  ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.4); border-radius: 3px; }
 }
 
 @layer components {
+  /* ── Buttons ── */
   .btn-primary {
-    @apply px-6 py-2.5 bg-brand-blue text-white rounded-xl font-semibold hover:opacity-90 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-6 py-3 font-bold text-white rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, #5B8DEF, #8B5CF6, #EC4899);
+    box-shadow: 0 4px 20px rgba(139,92,246,0.3);
   }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(139,92,246,0.45);
+  }
+
   .btn-secondary {
-    @apply px-6 py-2.5 bg-brand-teal text-white rounded-xl font-semibold hover:opacity-90 transition-all duration-300;
+    @apply px-6 py-3 font-semibold rounded-xl transition-all duration-200;
+    border: 1px solid rgba(240,240,255,0.15);
+    color: rgba(240,240,255,0.7);
+    background: transparent;
   }
-  .btn-outline {
-    @apply px-6 py-2.5 border-2 border-brand-blue text-brand-blue rounded-xl font-semibold hover:bg-brand-blue/10 transition-all duration-300;
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(240,240,255,0.25);
   }
-  .card {
-    @apply bg-neutral-white rounded-2xl shadow-sm border border-gray-100 p-6;
+
+  .btn-violet {
+    @apply px-6 py-3 font-bold text-white rounded-xl transition-all duration-200;
+    background: #7C3AED;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.35);
   }
+  .btn-violet:hover {
+    background: #6D28D9;
+    transform: translateY(-1px);
+  }
+
+  /* ── Cards / glass ── */
+  .glass-card {
+    background: rgba(15,15,42,0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.5rem;
+    backdrop-filter: blur(16px);
+  }
+
+  .surface-card {
+    background: #0F0F2A;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 1.25rem;
+  }
+
+  /* ── Input ── */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200 bg-neutral-white text-neutral-dark placeholder-neutral-dark/40 focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl font-sans transition-all duration-200;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: #F0F0FF;
+    outline: none;
   }
+  .input-field::placeholder { color: rgba(240,240,255,0.3); }
+  .input-field:focus {
+    border-color: rgba(139,92,246,0.5);
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+  }
+
+  /* ── Text gradient ── */
+  .text-gradient {
+    background: linear-gradient(135deg, #5B8DEF 0%, #8B5CF6 50%, #EC4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-violet {
+    background: linear-gradient(135deg, #8B5CF6, #5B8DEF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Badges ── */
+  .badge-violet {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1;
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.3);
+    color: #A78BFA;
+  }
+
+  .badge-coral {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1;
+    background: rgba(249,112,102,0.15);
+    border: 1px solid rgba(249,112,102,0.3);
+    color: #F97066;
+  }
+
+  .badge-mint {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #10B981;
+  }
+
+  /* ── Glow line separator ── */
+  .glow-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(139,92,246,0.5), transparent);
+  }
+
+  /* ── Category chip ── */
+  .chip {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3.5 py-1.5 cursor-pointer transition-all duration-200;
+    border: 1px solid;
+  }
+  .chip:hover { transform: translateY(-1px); }
+}
+
+/* ── BG blobs (reusable) ── */
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── Grid dots ── */
+.bg-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(91,141,239,0.07) 1px, transparent 0);
+  background-size: 36px 36px;
+  pointer-events: none;
+}
+
+/* ── Page base ── */
+.page-wrapper {
+  min-height: 100vh;
+  background: #080818;
+  position: relative;
+  overflow-x: hidden;
 }
 
 @media print {
-  nav, footer, .no-print {
-    display: none !important;
-  }
-  .printable-coloring {
-    display: block !important;
-    width: 100%;
-    height: auto;
-  }
-  body {
-    background: white;
-  }
+  nav, footer, .no-print { display: none !important; }
+  .printable-coloring { display: block !important; width: 100%; height: auto; }
+  body { background: white; color: black; }
 }

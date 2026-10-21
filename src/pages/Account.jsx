@@ -1,173 +1,131 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { useAuth } from '../hooks/useAuth'
-import { PLANS } from '../lib/stripe'
-import CreditCounter from '../components/CreditCounter'
+import { supabase } from '../lib/supabase'
 
 export default function Account() {
-  const { t, i18n } = useTranslation()
-  const { user, profile, signOut, refreshProfile } = useAuth()
   const navigate = useNavigate()
-  const lang = i18n.language === 'en' ? 'en' : 'fr'
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [signingOut, setSigningOut] = useState(false)
 
-  const currentPlan = profile?.plan || 'free'
-  const planInfo = PLANS[currentPlan]
-  const isUnlimited = currentPlan === 'teacher' || currentPlan === 'school'
-  const credits = profile?.credits_remaining ?? 0
-  const maxCredits = planInfo?.credits === 9999 ? '∞' : planInfo?.credits
-  const resetDate = profile?.credits_reset_date
-    ? new Date(profile.credits_reset_date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
-    : null
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data?.user) { navigate('/login'); return }
+      setUser(data.user)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single()
+      setProfile(prof)
+      setLoading(false)
+    })
+  }, [navigate])
 
   const handleSignOut = async () => {
-    await signOut()
+    setSigningOut(true)
+    await supabase.auth.signOut()
     navigate('/')
   }
 
-  const handleCancelPlan = async () => {
-    if (!window.confirm(t('account.cancelConfirm'))) return
-    alert('Pour annuler votre abonnement, contactez-nous à hello@colorplay.app')
-  }
+  if (loading) return (
+    <div className="page-wrapper min-h-screen flex items-center justify-center">
+      <div className="text-ink-secondary text-sm">Chargement…</div>
+    </div>
+  )
 
-  const PLAN_COLORS = {
-    free: 'bg-gray-100 text-gray-600',
-    family: 'bg-brand-orange/15 text-brand-orange',
-    teacher: 'bg-brand-blue/15 text-brand-blue',
-    school: 'bg-brand-purple/15 text-brand-purple',
-  }
+  const planLabels = { starter: 'Starter', pro: 'Pro', family: 'Famille' }
+  const planColors = { starter: '#5B8DEF', pro: '#8B5CF6', family: '#EC4899' }
+  const planColor = planColors[profile?.plan ?? 'starter']
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-extrabold text-neutral-dark mb-8">{t('account.title')}</h1>
+    <div className="page-wrapper min-h-screen pt-24 pb-20 px-4">
+      <div className="bg-blob" style={{ top: '60px', right: '-80px', width: '400px', height: '400px', background: 'radial-gradient(circle,rgba(139,92,246,0.1) 0%,transparent 70%)' }} />
+      <div className="bg-dots" />
 
-      {/* Profile card */}
-      <div className="card mb-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-brand-blue to-brand-purple rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-sm">
-            {(profile?.email || user?.email || '?')[0].toUpperCase()}
+      <div className="relative z-10 max-w-xl mx-auto">
+        {/* Avatar + info */}
+        <div className="flex items-center gap-5 mb-8">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg,#5B8DEF,#EC4899)' }}
+          >
+            {user?.email?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div>
-            <p className="font-semibold text-neutral-dark">{profile?.email || user?.email}</p>
+            <h1 className="text-xl font-black text-ink-primary">{user?.email}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${PLAN_COLORS[currentPlan]}`}>
-                {lang === 'en' ? planInfo?.nameEn : planInfo?.name}
+              <span
+                className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                style={{ background: `${planColor}22`, color: planColor, border: `1px solid ${planColor}44` }}
+              >
+                Plan {planLabels[profile?.plan ?? 'starter']}
               </span>
-              {profile?.stripe_customer_id && (
-                <span className="text-xs text-neutral-dark/40">Stripe ✓</span>
-              )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Credits */}
-      <div className="mb-5">
-        <CreditCounter
-          credits={credits}
-          plan={currentPlan}
-          resetDate={resetDate}
-        />
-      </div>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="surface-card p-5 text-center">
+            <div className="text-3xl font-black mb-1" style={{ color: '#8B5CF6' }}>
+              {profile?.credits ?? 0}
+            </div>
+            <div className="text-xs" style={{ color: 'rgba(240,240,255,0.4)' }}>Crédits disponibles</div>
+          </div>
+          <div className="surface-card p-5 text-center">
+            <div className="text-3xl font-black mb-1" style={{ color: '#5B8DEF' }}>
+              {profile?.total_generated ?? 0}
+            </div>
+            <div className="text-xs" style={{ color: 'rgba(240,240,255,0.4)' }}>Coloriages générés</div>
+          </div>
+        </div>
 
-      {/* Plan management */}
-      <div className="card mb-5">
-        <h2 className="font-bold text-neutral-dark mb-4">{t('account.plan')}</h2>
-        <div className="flex items-center justify-between mb-4">
+        {/* Plan card */}
+        <div className="surface-card p-6 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-ink-primary mb-0.5">Ton plan actuel</div>
+              <div className="text-xs" style={{ color: 'rgba(240,240,255,0.4)' }}>Plan {planLabels[profile?.plan ?? 'starter']}</div>
+            </div>
+            <Link
+              to="/pricing"
+              className="text-sm font-bold px-4 py-2 rounded-xl transition-all"
+              style={{
+                background: 'rgba(139,92,246,0.15)',
+                border: '1px solid rgba(139,92,246,0.3)',
+                color: '#A78BFA',
+              }}
+            >
+              Changer
+            </Link>
+          </div>
+        </div>
+
+        {/* History shortcut */}
+        <Link to="/history" className="surface-card p-6 mb-4 flex items-center justify-between group hover:border-white/15 transition-colors block">
           <div>
-            <p className="font-semibold text-neutral-dark">
-              {lang === 'en' ? planInfo?.nameEn : planInfo?.name}
-              {planInfo?.price > 0 && (
-                <span className="text-sm font-normal text-neutral-dark/50 ml-2">{planInfo?.price}€/mois</span>
-              )}
-            </p>
-            {resetDate && (
-              <p className="text-xs text-neutral-dark/40 mt-0.5">{t('account.renewal')} {resetDate}</p>
-            )}
+            <div className="text-sm font-semibold text-ink-primary mb-0.5">Mes coloriages</div>
+            <div className="text-xs" style={{ color: 'rgba(240,240,255,0.4)' }}>Voir l'historique complet</div>
           </div>
-          <Link
-            to="/pricing"
-            className="px-4 py-2 bg-brand-blue/10 text-brand-blue rounded-xl text-sm font-semibold hover:bg-brand-blue hover:text-white transition-all duration-200"
-          >
-            {t('account.changePlan')}
-          </Link>
-        </div>
+          <span style={{ color: 'rgba(240,240,255,0.3)' }}>→</span>
+        </Link>
 
-        {currentPlan !== 'free' && (
-          <button
-            onClick={handleCancelPlan}
-            className="text-sm text-red-400 hover:text-red-600 transition-colors font-medium"
-          >
-            {t('account.cancelPlan')}
-          </button>
-        )}
+        {/* Sign out */}
+        <button
+          onClick={handleSignOut}
+          className="w-full py-3.5 text-sm font-semibold rounded-xl transition-all duration-200"
+          style={{
+            border: '1px solid rgba(249,112,102,0.2)',
+            color: 'rgba(249,112,102,0.7)',
+            background: 'transparent',
+          }}
+          disabled={signingOut}
+        >
+          {signingOut ? 'Déconnexion…' : 'Se déconnecter'}
+        </button>
       </div>
-
-      {/* Usage stats */}
-      {!isUnlimited && (
-        <div className="card mb-5">
-          <h2 className="font-bold text-neutral-dark mb-4">{t('account.creditsUsed')}</h2>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-neutral-dark/60">Utilisés ce mois</span>
-                <span className="font-semibold text-neutral-dark">
-                  {(planInfo?.credits === 9999 ? 0 : (planInfo?.credits || 5)) - credits} / {maxCredits}
-                </span>
-              </div>
-              <div className="w-full bg-gray-100 rounded-full h-2">
-                <div
-                  className="bg-brand-teal h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(
-                      100 - Math.round((credits / (planInfo?.credits || 5)) * 100),
-                      100
-                    )}%`
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick links */}
-      <div className="card mb-5">
-        <h2 className="font-bold text-neutral-dark mb-4">Raccourcis</h2>
-        <div className="space-y-2">
-          <Link
-            to="/generator"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-neutral-light transition-colors group"
-          >
-            <span className="text-xl">✨</span>
-            <span className="text-sm font-medium text-neutral-dark/70 group-hover:text-neutral-dark">{t('nav.generate')}</span>
-            <span className="ml-auto text-neutral-dark/30 group-hover:text-brand-blue">→</span>
-          </Link>
-          <Link
-            to="/history"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-neutral-light transition-colors group"
-          >
-            <span className="text-xl">🗂️</span>
-            <span className="text-sm font-medium text-neutral-dark/70 group-hover:text-neutral-dark">{t('nav.history')}</span>
-            <span className="ml-auto text-neutral-dark/30 group-hover:text-brand-blue">→</span>
-          </Link>
-          <a
-            href="mailto:hello@colorplay.app"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-neutral-light transition-colors group"
-          >
-            <span className="text-xl">✉️</span>
-            <span className="text-sm font-medium text-neutral-dark/70 group-hover:text-neutral-dark">Contact support</span>
-            <span className="ml-auto text-neutral-dark/30 group-hover:text-brand-blue">→</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Sign out */}
-      <button
-        onClick={handleSignOut}
-        className="w-full py-3 border-2 border-red-200 text-red-400 rounded-xl font-semibold text-sm hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200"
-      >
-        {t('account.logout')}
-      </button>
     </div>
   )
 }

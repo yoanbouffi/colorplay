@@ -1,211 +1,176 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 
 export default function Navbar() {
-  const { t, i18n } = useTranslation()
-  const { user, profile, signOut } = useAuth()
+  const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [user, setUser] = useState(null)
+  const [credits, setCredits] = useState(null)
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const fetchCredits = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', user.id)
+        .single()
+      if (data) setCredits(data.credits)
+    }
+    fetchCredits()
+
+    const channel = supabase
+      .channel('credits-' + user.id)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}`
+      }, payload => setCredits(payload.new.credits))
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [user])
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const isActive = (path) => location.pathname === path
 
-  const handleSignOut = async () => {
-    await signOut()
-    setDropdownOpen(false)
-    navigate('/')
-  }
-
-  const toggleLang = () => {
-    i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')
-  }
-
-  const credits = profile?.credits_remaining ?? 0
-  const isUnlimited = profile?.plan === 'teacher' || profile?.plan === 'school'
-
   return (
-    <nav className="bg-neutral-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <img
-              src="/assets/logo-full.svg"
-              alt="ColorPlay"
-              className="h-8"
-              onError={(e) => {
-                e.target.style.display = 'none'
-                e.target.nextSibling.style.display = 'block'
-              }}
-            />
-            <span style={{ display: 'none' }} className="text-xl font-bold text-neutral-dark">
-              Color<span className="text-brand-blue">Play</span>
-            </span>
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      style={{
+        background: scrolled
+          ? 'rgba(8,8,24,0.85)'
+          : 'rgba(8,8,24,0.6)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+
+        {/* Logo */}
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg,#5B8DEF,#8B5CF6)' }}
+          >
+            🎨
+          </div>
+          <span
+            className="font-black text-lg"
+            style={{
+              background: 'linear-gradient(90deg,#5B8DEF,#8B5CF6)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            ColorPlay
+          </span>
+        </Link>
+
+        {/* Desktop links */}
+        <div className="hidden md:flex items-center gap-7">
+          <Link
+            to="/generator"
+            className="text-sm font-medium transition-colors duration-200"
+            style={{ color: isActive('/generator') ? '#A78BFA' : 'rgba(240,240,255,0.5)' }}
+          >
+            {t('nav.generator', 'Générateur')}
           </Link>
-
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {user && (
-              <>
-                <Link
-                  to="/generator"
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/generator')
-                      ? 'bg-brand-blue/10 text-brand-blue'
-                      : 'text-neutral-dark/70 hover:text-neutral-dark hover:bg-gray-100'
-                  }`}
-                >
-                  {t('nav.generate')}
-                </Link>
-                <Link
-                  to="/history"
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/history')
-                      ? 'bg-brand-blue/10 text-brand-blue'
-                      : 'text-neutral-dark/70 hover:text-neutral-dark hover:bg-gray-100'
-                  }`}
-                >
-                  {t('nav.history')}
-                </Link>
-              </>
-            )}
-            <Link
-              to="/pricing"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive('/pricing')
-                  ? 'bg-brand-blue/10 text-brand-blue'
-                  : 'text-neutral-dark/70 hover:text-neutral-dark hover:bg-gray-100'
-              }`}
-            >
-              {t('nav.pricing')}
-            </Link>
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center gap-3">
-            {/* Language toggle */}
-            <button
-              onClick={toggleLang}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-brand-blue-dk border border-gray-200 rounded-lg hover:border-brand-blue hover:text-brand-blue transition-all duration-200"
-            >
-              {i18n.language === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}
-            </button>
-
-            {user ? (
-              <>
-                {/* Credits badge */}
-                <Link to="/account" className="hidden md:flex items-center gap-1.5 bg-brand-blue text-white text-xs font-semibold px-3 py-1.5 rounded-full hover:opacity-90 transition-all duration-200">
-                  <span>✨</span>
-                  <span>{isUnlimited ? '∞' : credits}</span>
-                </Link>
-
-                {/* User dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 transition-all duration-200"
-                  >
-                    <div className="w-8 h-8 bg-brand-purple/20 rounded-full flex items-center justify-center text-brand-blue-dk font-semibold text-sm">
-                      {(profile?.email || user.email || '?')[0].toUpperCase()}
-                    </div>
-                    <svg className={`w-4 h-4 text-neutral-dark/50 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-52 bg-neutral-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
-                      <div className="px-4 py-2 border-b border-gray-100 mb-1">
-                        <p className="text-xs text-neutral-dark/50 truncate">{profile?.email || user.email}</p>
-                        <p className="text-xs font-semibold text-brand-blue capitalize">{profile?.plan || 'free'}</p>
-                      </div>
-                      <Link
-                        to="/account"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-neutral-dark hover:bg-neutral-light transition-colors"
-                      >
-                        <span>👤</span> {t('nav.account')}
-                      </Link>
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
-                      >
-                        <span>↩</span> {t('nav.logout')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="hidden md:flex items-center gap-2">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-sm font-medium text-neutral-dark/70 hover:text-neutral-dark transition-colors"
-                >
-                  {t('nav.login')}
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 bg-brand-blue text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-all duration-300"
-                >
-                  {t('nav.register')}
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-5 h-5 text-neutral-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                {mobileOpen
-                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                }
-              </svg>
-            </button>
-          </div>
+          <Link
+            to="/history"
+            className="text-sm font-medium transition-colors duration-200"
+            style={{ color: isActive('/history') ? '#A78BFA' : 'rgba(240,240,255,0.5)' }}
+          >
+            {t('nav.gallery', 'Galerie')}
+          </Link>
+          <Link
+            to="/pricing"
+            className="text-sm font-medium transition-colors duration-200"
+            style={{ color: isActive('/pricing') ? '#A78BFA' : 'rgba(240,240,255,0.5)' }}
+          >
+            {t('nav.pricing', 'Tarifs')}
+          </Link>
         </div>
 
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden border-t border-gray-100 py-3 space-y-1">
-            {user && (
-              <>
-                <Link to="/generator" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-neutral-dark hover:bg-neutral-light rounded-xl transition-colors">{t('nav.generate')}</Link>
-                <Link to="/history" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-neutral-dark hover:bg-neutral-light rounded-xl transition-colors">{t('nav.history')}</Link>
-              </>
-            )}
-            <Link to="/pricing" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-neutral-dark hover:bg-neutral-light rounded-xl transition-colors">{t('nav.pricing')}</Link>
-            <div className="flex items-center gap-3 px-4 py-2">
-              <button onClick={toggleLang} className="text-xs font-medium text-brand-blue-dk border border-gray-200 rounded-lg px-2.5 py-1.5">
-                {i18n.language === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}
-              </button>
-              {user ? (
-                <>
-                  <span className="flex items-center gap-1 bg-brand-blue text-white text-xs font-semibold px-3 py-1.5 rounded-full">
-                    ✨ {isUnlimited ? '∞' : credits}
-                  </span>
-                  <button onClick={handleSignOut} className="text-sm text-red-500 font-medium">{t('nav.logout')}</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" onClick={() => setMobileOpen(false)} className="text-sm text-neutral-dark/70">{t('nav.login')}</Link>
-                  <Link to="/register" onClick={() => setMobileOpen(false)} className="px-4 py-1.5 bg-brand-blue text-white text-sm font-semibold rounded-xl">{t('nav.register')}</Link>
-                </>
+        {/* Right side */}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              {credits !== null && (
+                <div
+                  className="hidden sm:flex items-center gap-1.5 text-sm font-bold rounded-full px-3.5 py-1.5"
+                  style={{
+                    background: 'rgba(139,92,246,0.15)',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    color: '#A78BFA',
+                  }}
+                >
+                  ✦ {credits} {t('nav.credits', 'crédits')}
+                </div>
               )}
-            </div>
-          </div>
-        )}
+              <Link to="/account">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg,#5B8DEF,#EC4899)' }}
+                  title={user.email}
+                >
+                  {user.email?.[0]?.toUpperCase() ?? '?'}
+                </div>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="hidden sm:block text-sm font-medium transition-colors duration-200"
+                style={{ color: 'rgba(240,240,255,0.5)' }}
+              >
+                {t('nav.login', 'Connexion')}
+              </Link>
+              <Link to="/register" className="btn-primary text-sm py-2 px-5">
+                {t('nav.register', 'Commencer')}
+              </Link>
+            </>
+          )}
+
+          {/* Mobile burger */}
+          <button
+            className="md:hidden flex flex-col gap-1.5 p-1"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <span className="block w-5 h-0.5 bg-white/60 rounded"></span>
+            <span className="block w-5 h-0.5 bg-white/60 rounded"></span>
+            <span className="block w-5 h-0.5 bg-white/60 rounded"></span>
+          </button>
+        </div>
       </div>
 
-      {/* Backdrop */}
-      {dropdownOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div
+          className="md:hidden px-6 pb-4 flex flex-col gap-3"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <Link to="/generator" className="text-sm py-2" style={{ color: 'rgba(240,240,255,0.6)' }} onClick={() => setMenuOpen(false)}>Générateur</Link>
+          <Link to="/history" className="text-sm py-2" style={{ color: 'rgba(240,240,255,0.6)' }} onClick={() => setMenuOpen(false)}>Galerie</Link>
+          <Link to="/pricing" className="text-sm py-2" style={{ color: 'rgba(240,240,255,0.6)' }} onClick={() => setMenuOpen(false)}>Tarifs</Link>
+          {!user && <Link to="/login" className="text-sm py-2" style={{ color: 'rgba(240,240,255,0.6)' }} onClick={() => setMenuOpen(false)}>Connexion</Link>}
+        </div>
       )}
     </nav>
   )

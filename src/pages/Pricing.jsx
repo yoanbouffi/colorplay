@@ -1,136 +1,172 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import PlanCard from '../components/PlanCard'
-import { PLANS } from '../lib/stripe'
+import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
-const FEATURES_COMPARE = [
-  { key: 'Coloriages / mois', free: '5', family: '50', teacher: 'Illimité', school: 'Illimité' },
-  { key: 'Résolution', free: 'Standard', family: 'Haute', teacher: 'Haute', school: 'Haute' },
-  { key: 'Téléchargement PDF', free: false, family: true, teacher: true, school: true },
-  { key: 'Impression optimisée', free: false, family: true, teacher: true, school: true },
-  { key: 'Historique complet', free: false, family: true, teacher: true, school: true },
-  { key: 'Support prioritaire', free: false, family: false, teacher: true, school: true },
-  { key: 'Comptes enseignants', free: false, family: false, teacher: '1', school: '5' },
-  { key: 'Facturation établissement', free: false, family: false, teacher: false, school: true },
+const PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '0€',
+    period: '',
+    credits: 5,
+    color: 'rgba(91,141,239,0.2)',
+    borderColor: 'rgba(91,141,239,0.25)',
+    accent: '#5B8DEF',
+    features: ['5 crédits offerts', 'Coloriages SVG HD', 'Téléchargement inclus', 'Support communauté'],
+    cta: 'Commencer gratuitement',
+    ctaLink: '/register',
+    featured: false,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '4,99€',
+    period: '/mois',
+    credits: 50,
+    color: 'rgba(139,92,246,0.15)',
+    borderColor: 'rgba(139,92,246,0.4)',
+    accent: '#8B5CF6',
+    features: ['50 crédits / mois', 'Coloriages SVG HD', 'Téléchargement inclus', 'Historique illimité', 'Support prioritaire'],
+    cta: 'Choisir Pro',
+    ctaLink: '/checkout?plan=pro',
+    featured: true,
+    badge: '⚡ Populaire',
+  },
+  {
+    id: 'family',
+    name: 'Famille',
+    price: '9,99€',
+    period: '/mois',
+    credits: 150,
+    color: 'rgba(236,72,153,0.1)',
+    borderColor: 'rgba(236,72,153,0.25)',
+    accent: '#EC4899',
+    features: ['150 crédits / mois', 'Coloriages SVG HD', 'Téléchargement inclus', 'Historique illimité', '3 comptes enfants', 'Support dédié'],
+    cta: 'Choisir Famille',
+    ctaLink: '/checkout?plan=family',
+    featured: false,
+  },
 ]
 
-export default function Pricing() {
-  const { t, i18n } = useTranslation()
-  const lang = i18n.language === 'en' ? 'en' : 'fr'
-  const [openFaq, setOpenFaq] = useState(null)
-
-  const faqs = [
-    { q: t('pricing.faq.q1'), a: t('pricing.faq.a1') },
-    { q: t('pricing.faq.q2'), a: t('pricing.faq.a2') },
-    { q: t('pricing.faq.q3'), a: t('pricing.faq.a3') },
-    { q: t('pricing.faq.q4'), a: t('pricing.faq.a4') },
-    { q: t('pricing.faq.q5'), a: t('pricing.faq.a5') },
-  ]
+function PlanCard({ plan, currentPlan }) {
+  const isOwned = currentPlan === plan.id
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-neutral-dark mb-3">{t('pricing.title')}</h1>
-        <p className="text-neutral-dark/60 text-lg max-w-xl mx-auto">{t('pricing.subtitle')}</p>
-        <div className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-brand-green/15 rounded-xl text-sm text-brand-teal font-medium">
-          <span>ℹ️</span> {t('pricing.note')}
+    <div
+      className="relative flex flex-col rounded-2xl p-7 transition-all duration-300"
+      style={{
+        background: plan.featured ? 'rgba(139,92,246,0.1)' : plan.color,
+        border: `1px solid ${plan.borderColor}`,
+        boxShadow: plan.featured ? '0 8px 40px rgba(139,92,246,0.2)' : '0 4px 24px rgba(0,0,0,0.3)',
+        transform: plan.featured ? 'scale(1.03)' : 'scale(1)',
+      }}
+    >
+      {plan.badge && (
+        <div
+          className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-black px-4 py-1 rounded-full text-white"
+          style={{ background: 'linear-gradient(135deg,#8B5CF6,#EC4899)' }}
+        >
+          {plan.badge}
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h3 className="font-black text-lg text-ink-primary mb-1">{plan.name}</h3>
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-black" style={{ color: plan.accent }}>{plan.price}</span>
+          {plan.period && <span className="text-sm" style={{ color: 'rgba(240,240,255,0.4)' }}>{plan.period}</span>}
+        </div>
+        <div className="text-xs mt-1" style={{ color: 'rgba(240,240,255,0.4)' }}>
+          {plan.credits} crédit{plan.credits > 1 ? 's' : ''} {plan.period ? 'par mois' : 'pour commencer'}
         </div>
       </div>
 
-      {/* Plan cards */}
-      <PlanCard />
+      <ul className="flex flex-col gap-2.5 mb-8 flex-1">
+        {plan.features.map(f => (
+          <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: 'rgba(240,240,255,0.75)' }}>
+            <span style={{ color: plan.accent }}>✓</span>
+            {f}
+          </li>
+        ))}
+      </ul>
 
-      {/* Comparison table */}
-      <div className="mt-16">
-        <h2 className="text-2xl font-bold text-center text-neutral-dark mb-8">
-          {lang === 'fr' ? 'Comparer les offres' : 'Compare plans'}
-        </h2>
-        <div className="bg-neutral-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left px-6 py-4 font-semibold text-neutral-dark/50 w-1/3">
-                    {lang === 'fr' ? 'Fonctionnalité' : 'Feature'}
-                  </th>
-                  {['free', 'family', 'teacher', 'school'].map(planId => (
-                    <th key={planId} className={`px-4 py-4 text-center font-bold ${planId === 'family' ? 'text-brand-orange' : 'text-neutral-dark'}`}>
-                      <div>{lang === 'en' ? PLANS[planId].nameEn : PLANS[planId].name}</div>
-                      <div className={`text-xs font-normal mt-0.5 ${planId === 'family' ? 'text-brand-orange/70' : 'text-neutral-dark/40'}`}>
-                        {PLANS[planId].price === 0 ? (lang === 'fr' ? 'Gratuit' : 'Free') : `${PLANS[planId].price}€/mois`}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {FEATURES_COMPARE.map((row, i) => (
-                  <tr key={i} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-neutral-white' : 'bg-neutral-light/50'}`}>
-                    <td className="px-6 py-3.5 text-neutral-dark/70 font-medium">{row.key}</td>
-                    {['free', 'family', 'teacher', 'school'].map(planId => (
-                      <td key={planId} className="px-4 py-3.5 text-center">
-                        {row[planId] === true ? (
-                          <span className="text-brand-green text-lg">✓</span>
-                        ) : row[planId] === false ? (
-                          <span className="text-gray-300 text-lg">—</span>
-                        ) : (
-                          <span className="font-semibold text-neutral-dark text-xs">{row[planId]}</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {isOwned ? (
+        <div className="w-full py-3 text-center rounded-xl font-bold text-sm" style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(240,240,255,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          Plan actuel
         </div>
-      </div>
+      ) : plan.id === 'starter' ? (
+        <Link to={plan.ctaLink} className="btn-secondary w-full py-3 text-center text-sm font-bold block">
+          {plan.cta}
+        </Link>
+      ) : (
+        <Link
+          to={plan.ctaLink}
+          className="w-full py-3 text-center rounded-xl font-bold text-sm text-white block transition-all duration-200 hover:-translate-y-0.5"
+          style={{
+            background: plan.featured
+              ? 'linear-gradient(135deg,#8B5CF6,#EC4899)'
+              : `linear-gradient(135deg,${plan.accent}88,${plan.accent})`,
+            boxShadow: `0 4px 16px ${plan.accent}33`,
+          }}
+        >
+          {plan.cta}
+        </Link>
+      )}
+    </div>
+  )
+}
 
-      {/* FAQ */}
-      <div className="mt-16 max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-center text-neutral-dark mb-8">{t('pricing.faq.title')}</h2>
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              className="bg-neutral-white rounded-2xl border border-gray-100 overflow-hidden"
-            >
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-neutral-light/50 transition-colors"
-              >
-                <span className="font-semibold text-neutral-dark text-sm pr-4">{faq.q}</span>
-                <span className={`text-brand-blue flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </span>
-              </button>
-              {openFaq === i && (
-                <div className="px-6 pb-4 text-sm text-neutral-dark/60 leading-relaxed border-t border-gray-50">
-                  <div className="pt-3">{faq.a}</div>
-                </div>
-              )}
-            </div>
+export default function Pricing() {
+  const [currentPlan, setCurrentPlan] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data?.user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('plan')
+        .eq('id', data.user.id)
+        .single()
+      if (profile) setCurrentPlan(profile.plan ?? 'starter')
+    })
+  }, [])
+
+  return (
+    <div className="page-wrapper min-h-screen pt-24 pb-20 px-4">
+      <div className="bg-blob" style={{ top: '0', left: '50%', transform: 'translateX(-50%)', width: '600px', height: '400px', background: 'radial-gradient(ellipse,rgba(139,92,246,0.1) 0%,transparent 70%)' }} />
+      <div className="bg-dots" />
+
+      <div className="relative z-10 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-14">
+          <div className="badge-violet mb-5 inline-flex">✦ Tarifs transparents</div>
+          <h1 className="text-4xl md:text-5xl font-black text-ink-primary mb-4">
+            Choisis ton plan
+          </h1>
+          <p className="text-ink-secondary text-lg max-w-xl mx-auto">
+            Des coloriages uniques générés par l'IA, pour tous les budgets.
+          </p>
+        </div>
+
+        {/* Plans */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center mb-16">
+          {PLANS.map(plan => (
+            <PlanCard key={plan.id} plan={plan} currentPlan={currentPlan} />
           ))}
         </div>
-      </div>
 
-      {/* Bottom CTA */}
-      <div className="mt-16 text-center bg-gradient-to-r from-brand-blue/10 to-brand-purple/10 rounded-2xl p-10">
-        <h3 className="text-2xl font-bold text-neutral-dark mb-2">
-          {lang === 'fr' ? 'Des questions ?' : 'Any questions?'}
-        </h3>
-        <p className="text-neutral-dark/60 mb-4 text-sm">
-          {lang === 'fr' ? 'Notre équipe est disponible pour vous aider.' : "Our team is available to help."}
-        </p>
-        <a
-          href="mailto:hello@colorplay.app"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-dark text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all duration-200"
-        >
-          ✉️ hello@colorplay.app
-        </a>
+        {/* Credits FAQ */}
+        <div className="surface-card p-8 mb-10">
+          <h2 className="text-xl font-black text-ink-primary mb-2">💡 Comment fonctionnent les crédits ?</h2>
+          <p className="text-ink-secondary text-sm leading-relaxed">
+            Chaque génération de coloriage coûte <strong className="text-ink-primary">1 crédit</strong>. Les crédits mensuels se renouvellent chaque mois — les crédits non utilisés ne sont pas reportés. Les crédits offerts (plan Starter) n'expirent jamais.
+          </p>
+        </div>
+
+        {/* Guarantee */}
+        <div className="text-center" style={{ color: 'rgba(240,240,255,0.4)' }}>
+          <p className="text-sm">🔒 Paiement sécurisé par Stripe · Annulation à tout moment</p>
+        </div>
       </div>
     </div>
   )

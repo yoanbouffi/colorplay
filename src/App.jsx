@@ -27,7 +27,7 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-neutral-light">
+      <div className="min-h-screen flex flex-col" style={{ background: '#080818' }}>
         <Navbar />
         <main className="flex-1">
           <Routes>
