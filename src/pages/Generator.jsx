@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { jsPDF } from 'jspdf'
 
@@ -22,9 +22,10 @@ const STYLES = [
 
 export default function Generator() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [user, setUser] = useState(null)
   const [credits, setCredits] = useState(null)
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(() => searchParams.get('q') ?? '')
   const [style, setStyle] = useState('simple')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)

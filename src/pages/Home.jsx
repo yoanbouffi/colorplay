@@ -20,6 +20,7 @@ const STATS = [
 const CARDS = [
   {
     label: '🦁 Lion',
+    prompt: 'Un lion majestueux dans la savane au coucher de soleil',
     accent: '#F97066',
     bg: 'rgba(249,112,102,0.08)',
     border: 'rgba(249,112,102,0.18)',
@@ -40,6 +41,7 @@ const CARDS = [
   },
   {
     label: '🐉 Dragon',
+    prompt: 'Un dragon crachant des flammes dans un ciel nocturne',
     sub: '+180 impressions',
     accent: '#A78BFA',
     subColor: 'rgba(167,139,250,0.6)',
@@ -63,6 +65,7 @@ const CARDS = [
   },
   {
     label: '🧚 Fée',
+    prompt: 'Une fée dans une forêt enchantée avec des fleurs magiques',
     accent: '#10B981',
     bg: 'rgba(16,185,129,0.08)',
     border: 'rgba(16,185,129,0.18)',
@@ -84,6 +87,7 @@ const CARDS = [
   },
   {
     label: '🏰 Château',
+    prompt: 'Un château médiéval au coucher de soleil avec des tours imposantes',
     accent: '#F59E0B',
     bg: 'rgba(245,158,11,0.08)',
     border: 'rgba(245,158,11,0.18)',
@@ -107,6 +111,7 @@ const CARDS = [
   },
   {
     label: '🚀 Cosmos',
+    prompt: 'Un cosmos avec des étoiles et des planètes colorées',
     accent: '#EC4899',
     bg: 'rgba(236,72,153,0.08)',
     border: 'rgba(236,72,153,0.18)',
@@ -209,7 +214,7 @@ export default function Home() {
         {CARDS.map((card) => (
           <Link
             key={card.label}
-            to="/generator"
+            to={`/generator?q=${encodeURIComponent(card.prompt || card.label.replace(/^[^\s]+ /, ''))}`}
             className="text-center rounded-2xl p-4 transition-all duration-300 hover:-translate-y-1 relative block no-underline"
             style={{
               background: card.bg,
