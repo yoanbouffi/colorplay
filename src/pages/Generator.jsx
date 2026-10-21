@@ -35,8 +35,8 @@ export default function Generator() {
       if (!data?.user) return
       setUser(data.user)
       const { data: prof } = await supabase
-        .from('profiles').select('credits').eq('id', data.user.id).single()
-      if (prof) setCredits(prof.credits)
+        .from('profiles').select('credits_remaining').eq('id', data.user.id).single()
+      if (prof) setCredits(prof.credits_remaining)
     })
   }, [])
 

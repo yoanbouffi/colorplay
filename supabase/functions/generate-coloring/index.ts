@@ -29,12 +29,12 @@ serve(async (req) => {
     // Check credits
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credits')
+      .select('credits_remaining')
       .eq('id', user.id)
       .single()
 
     if (profileError || !profile) throw new Error('Profile not found')
-    if (profile.credits <= 0) throw new Error('No credits remaining')
+    if (profile.credits_remaining <= 0) throw new Error('No credits remaining')
 
     // Parse body
     const { prompt, style = 'simple' } = await req.json()
@@ -83,7 +83,7 @@ serve(async (req) => {
       // fallback: manual deduct
       await supabase
         .from('profiles')
-        .update({ credits: profile.credits - 1 })
+        .update({ credits_remaining: profile.credits_remaining - 1 })
         .eq('id', user.id)
     }
 
@@ -101,14 +101,14 @@ serve(async (req) => {
     // Get updated credits
     const { data: updatedProfile } = await supabase
       .from('profiles')
-      .select('credits')
+      .select('credits_remaining')
       .eq('id', user.id)
       .single()
 
     return new Response(
       JSON.stringify({
         svg_url: imageUrl,
-        credits_remaining: updatedProfile?.credits ?? profile.credits - 1,
+        credits_remaining: updatedProfile?.credits_remaining ?? profile.credits_remaining - 1,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
