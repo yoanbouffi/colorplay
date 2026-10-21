@@ -8,6 +8,8 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -16,6 +18,17 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false) }
     else navigate('/generator')
+  }
+
+  const handleReset = async () => {
+    if (!email) { setError('Entre ton email ci-dessus pour réinitialiser ton mot de passe.'); return }
+    setResetLoading(true)
+    setError(null)
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setResetSent(true)
+    setResetLoading(false)
   }
 
   return (
@@ -70,6 +83,22 @@ export default function Login() {
             <button type="submit" className="btn-primary w-full py-3.5 text-base mt-1" disabled={loading}>
               {loading ? 'Connexion...' : 'Se connecter →'}
             </button>
+
+            {resetSent ? (
+              <p className="text-center text-xs" style={{ color: '#10B981' }}>
+                ✓ Email envoyé ! Vérifie ta boîte mail.
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={resetLoading}
+                className="text-xs text-center w-full transition-colors"
+                style={{ color: 'rgba(167,139,250,0.6)', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                {resetLoading ? 'Envoi...' : 'Mot de passe oublié ?'}
+              </button>
+            )}
           </form>
         </div>
 
