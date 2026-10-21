@@ -28,7 +28,7 @@ export default function Generator() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -62,31 +62,57 @@ export default function Generator() {
     }
   }
 
-  const handleDownload = async () => {
+  const handleDownload = async (format = 'png') => {
     if (!result?.svg_url && !result?.svg) return
-    setDownloading(true)
+    setDownloading(format)
     try {
-      const content = result.svg ?? null
-      if (content) {
-        const blob = new Blob([content], { type: 'image/svg+xml' })
-        const url = URL.createObjectURL(blob)
+      const imageUrl = result.svg_url
+      // Load image into canvas
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = reject
+        img.src = imageUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth || 1024
+      canvas.height = img.naturalHeight || 1024
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0)
+
+      const filename = `coloriage-${Date.now()}`
+
+      if (format === 'pdf') {
+        // Fallback: download as JPG (proper PDF needs a library)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
         const a = document.createElement('a')
-        a.href = url
-        a.download = `coloriage-${Date.now()}.svg`
+        a.href = dataUrl
+        a.download = `${filename}.jpg`
         a.click()
-        URL.revokeObjectURL(url)
       } else {
-        const res = await fetch(result.svg_url)
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `coloriage-${Date.now()}.svg`
-        a.click()
-        URL.revokeObjectURL(url)
+        const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
+        const quality = format === 'jpg' ? 0.92 : undefined
+        canvas.toBlob((blob) => {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `${filename}.${format}`
+          a.click()
+          URL.revokeObjectURL(url)
+        }, mimeType, quality)
       }
+    } catch (err) {
+      // Fallback: direct download
+      const a = document.createElement('a')
+      a.href = result.svg_url
+      a.download = `coloriage-${Date.now()}.png`
+      a.target = '_blank'
+      a.click()
     } finally {
-      setDownloading(false)
+      setDownloading(null)
     }
   }
 
@@ -223,7 +249,7 @@ export default function Generator() {
           /* Result */
           <div className="flex flex-col items-center gap-6">
             <div className="w-full surface-card overflow-hidden" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.4)' }}>
-              {/* SVG preview */}
+              {/* Image preview */}
               <div
                 className="flex items-center justify-center p-8"
                 style={{ background: 'rgba(255,255,255,0.97)', minHeight: '380px' }}
@@ -248,15 +274,31 @@ export default function Generator() {
               </div>
             </div>
 
-            <div className="flex gap-3 w-full">
+            <div className="flex gap-2 w-full">
               <button
-                onClick={handleDownload}
-                className="btn-primary flex-1 py-3.5 flex items-center justify-center gap-2"
-                disabled={downloading}
+                onClick={() => handleDownload('png')}
+                className="btn-primary flex-1 py-3.5 flex items-center justify-center gap-1.5 text-sm font-bold"
+                disabled={!!downloading}
               >
-                {downloading ? 'Téléchargement…' : '⬇ Télécharger SVG'}
+                {downloading === 'png' ? '…' : '⬇ PNG'}
               </button>
-              <button onClick={handleNew} className="btn-secondary py-3.5 px-5 text-sm">
+              <button
+                onClick={() => handleDownload('jpg')}
+                className="btn-primary flex-1 py-3.5 flex items-center justify-center gap-1.5 text-sm font-bold"
+                disabled={!!downloading}
+                style={{ background: 'rgba(139,92,246,0.7)' }}
+              >
+                {downloading === 'jpg' ? '…' : '⬇ JPG'}
+              </button>
+              <button
+                onClick={() => handleDownload('pdf')}
+                className="btn-primary flex-1 py-3.5 flex items-center justify-center gap-1.5 text-sm font-bold"
+                disabled={!!downloading}
+                style={{ background: 'rgba(139,92,246,0.5)' }}
+              >
+                {downloading === 'pdf' ? '…' : '⬇ PDF'}
+              </button>
+              <button onClick={handleNew} className="btn-secondary py-3.5 px-4 text-sm">
                 ✨ Nouveau
               </button>
             </div>
